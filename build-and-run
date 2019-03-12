@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+source functions.sh
+
+# Read configuration variable file if it is present
+[ -r "./settings.conf" ] && . ./settings.conf
+
+UNIQ=`date | sha1sum | cut -c 1-7`
+ISO=`find ./iso/ubuntu-18.04* | head -n1`
+
+VMS_ROOT="${HOME}/VirtualBox VMs"
+VM="Ubuntu-`echo ${ISO} | cut -d "-" -f 2-3`-${UNIQ}"
+VM_HDD="${VMS_ROOT}/${VM}/${VM}"
+VM_HDD_FILE="${VM_HDD}.vdi"
+
+shout "Setting up"
+
+# Some dependency checks
+directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
+file_exists "${ISO}" "Cannot find iso ${ISO}"
+is_runnable "vboxmanage --version" "Cannot find/run vboxmanage"
+is_runnable "mkisofs --help" "Cannot find/run mkisofs"
+is_runnable "7z -?" "Cannot find/run 7z"
+is_runnable "vagrant --version" "Cannot find/run vagrant"
+
+# Remove previously built ISOs
+rm -f *.iso
+
+mkdir "./tmp/"
+mkdir "./tmp/${VM}"
+
+shout "Extracting ${ISO}"
+
+7z x -o"./tmp/${VM}" "${ISO}"
+
+shout "Copying configuration"
+
+cp -f ./isolinux.cfg ./tmp/${VM}/isolinux/isolinux.cfg
+cp -f ./custom.seed ./tmp/${VM}/preseed/custom.seed
+
+shout "Building custom iso"
+
+mkisofs -o ./${VM}-ks.iso \
+        -b isolinux/isolinux.bin \
+        -c isolinux/boot.cat \
+        -no-emul-boot \
+        -boot-load-size 4 \
+        -boot-info-table \
+        -JrRlL -input-charset default -allow-lowercase -allow-multidot  \
+        -V "${VM}" \
+        ./tmp/${VM}/
+
+shout "Cleanup"
+
+rm -rf ./tmp/
+
+shout "Booting VM to start install"
+
+ISO="./${VM}-ks.iso"
+VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
+VBoxManage createvm --name "${VM}" --register
+VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on
+VBoxManage storagectl "${VM}" --name ide0 --add ide
+VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium "${ISO}"
+VBoxManage storagectl "${VM}" --name sata0 --add sata --portcount 1
+VBoxManage createhd --filename "${VM_HDD_FILE}" --size 20480
+VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
+VBoxManage modifyvm "${VM}" --nic1 nat
+VBoxManage startvm --type=gui "${VM}"
+
+shout "Will now wait until it's finished"
+
+wait_vm_quit "${VM}"
