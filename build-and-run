@@ -45,7 +45,7 @@ mkisofs -o ./${VM}-ks.iso \
         -no-emul-boot \
         -boot-load-size 4 \
         -boot-info-table \
-        -JrRlL -input-charset default -allow-lowercase -allow-multidot  \
+        -J -r -R -l -input-charset default -allow-lowercase -allow-multidot  \
         -V "${VM}" \
         ./tmp/${VM}/
 
