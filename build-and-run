@@ -21,7 +21,6 @@ file_exists "${ISO}" "Cannot find iso ${ISO}"
 is_runnable "vboxmanage --version" "Cannot find/run vboxmanage"
 is_runnable "mkisofs --help" "Cannot find/run mkisofs"
 is_runnable "7z -?" "Cannot find/run 7z"
-is_runnable "vagrant --version" "Cannot find/run vagrant"
 
 # Remove previously built ISOs
 rm -f *.iso
