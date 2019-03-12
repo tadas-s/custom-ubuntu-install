@@ -1,0 +1,60 @@
+d-i debconf/priority string critical
+d-i auto-install/enable boolean true
+
+# use -proposed udebs
+d-i apt-setup/proposed boolean false
+
+# minimal install (the only one not working!)
+ubiquity ubiquity/minimal_install boolean true
+
+# update and install packages
+tasksel tasksel/first multiselect ubuntu-desktop
+d-i pkgsel/update-policy select unattended-upgrades
+d-i pkgsel/include string firefox net-tools git ssh make mc openvpn chrome-gnome-shell
+d-i pkgsel/upgrade select full-upgrade
+
+# localization
+d-i debian-installer/language string en
+d-i debian-installer/country string GB
+d-i debian-installer/locale string en_GB.UTF-8
+
+# keyboard
+d-i console-setup/ask_detect boolean false
+d-i keyboard-configuration/xkb-keymap select gb
+
+# use dhcp network configuration
+d-i netcfg/choose_interface select auto
+d-i netcfg/get_hostname string unassigned-hostname
+d-i netcfg/get_domain string unassigned-domain
+
+# user setup
+d-i passwd/user-fullname string fcadmin
+d-i passwd/username string fcadmin
+# Generate pass using: mkpasswd -m sha-512 -S $(pwgen -ns 16 1) thepassword
+d-i passwd/user-password-crypted password $6$ZKpAkSjlCz3YI1RW$z5PQa9Wq8yKjQMM.CJb6AqsjougylkBoEWAV51hbwTUpCsFWhFPRsz7x5eAHNe6F/8sGrVWOggR0qtmcVVok3.
+
+d-i user-setup/encrypt-home boolean false
+
+# enable shadow passwords
+d-i passwd/shadow boolean true
+
+# hw clock
+d-i clock-setup/utc boolean true
+# time zone
+d-i time/zone string Europe/London
+
+# release to install
+d-i mirror/suite string bionic
+
+# do not enable live installer, use normal instead
+d-i live-installer/enable boolean false
+
+# auto-partition, all files in one partition
+d-i partman-auto/method string regular
+d-i partman-auto/choose_recipe select atomic
+d-i partman/choose_partition select finish
+d-i partman/confirm_nooverwrite boolean true
+d-i partman/confirm boolean true
+
+# reboot at the end
+d-i finish-install/reboot_in_progress note
