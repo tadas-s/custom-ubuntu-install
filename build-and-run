@@ -36,6 +36,7 @@ shout "Copying configuration"
 
 cp -f ./isolinux.cfg ./tmp/${VM}/isolinux/isolinux.cfg
 cp -f ./custom.seed ./tmp/${VM}/preseed/custom.seed
+cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
@@ -58,11 +59,12 @@ shout "Booting VM to start install"
 ISO="./${VM}-ks.iso"
 VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
 VBoxManage createvm --name "${VM}" --register
-VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on
+VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on \
+           --clipboard bidirectional --cpus 2 --firmware efi64
 VBoxManage storagectl "${VM}" --name ide0 --add ide
 VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium "${ISO}"
 VBoxManage storagectl "${VM}" --name sata0 --add sata --portcount 1
-VBoxManage createhd --filename "${VM_HDD_FILE}" --size 20480
+VBoxManage createhd --filename "${VM_HDD_FILE}" --size 40960
 VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
 VBoxManage modifyvm "${VM}" --nic1 nat
 VBoxManage startvm --type=gui "${VM}"

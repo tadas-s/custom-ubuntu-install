@@ -62,6 +62,10 @@ d-i partman-auto/disk string /dev/sda
 d-i partman-auto/choose_recipe select root-encrypted
 d-i partman-auto/expert_recipe string                         \
       root-encrypted ::                                       \
+              1000 1000 1000 free                             \
+                      method{ efi }                           \
+                      format{ }                               \
+              .                                               \
               1000 1000 1000 ext3                             \
                       $primary{ } $bootable{ }                \
                       method{ format } format{ }              \
