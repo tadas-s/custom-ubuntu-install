@@ -66,7 +66,3 @@ VBoxManage createhd --filename "${VM_HDD_FILE}" --size 20480
 VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
 VBoxManage modifyvm "${VM}" --nic1 nat
 VBoxManage startvm --type=gui "${VM}"
-
-shout "Will now wait until it's finished"
-
-wait_vm_quit "${VM}"
