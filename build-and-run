@@ -24,7 +24,6 @@ is_runnable "7z -?" "Cannot find/run 7z"
 
 # Remove previously built ISOs
 rm -f *.iso
-rm -f *.dmg
 
 mkdir "./tmp/"
 mkdir "./tmp/${VM}"
@@ -50,14 +49,6 @@ mkisofs -o ./${VM}-unattended.iso \
         -J -r -R -l -input-charset default -allow-lowercase -allow-multidot  \
         -V "${VM}" \
         ./tmp/${VM}/
-
-shout "Building bootable USB image"
-
-hdiutil convert \
-        -format UDRW \
-        -o ./${VM}-unattended ./${VM}-unattended.iso
-
-shout "Use Disk Utility to write ${VM}-unattended.dmg to USB drive"
 
 shout "Cleanup"
 
