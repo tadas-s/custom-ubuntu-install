@@ -18,6 +18,7 @@ Installation options in `custom.seed` and other installation guidance documented
 
 1. [Automatic installation chapter][2]
 2. [Full guide][3]
+3. [Pre-seeding configuration guide][4]
 
 ## Building the iso image
 
@@ -32,3 +33,4 @@ This will build image and start a Virtualbox VM with the image mounted for testi
 [1]: http://releases.ubuntu.com/18.04.2/
 [2]: https://help.ubuntu.com/lts/installation-guide/amd64/ch04s06.html
 [3]: https://help.ubuntu.com/lts/installation-guide/amd64/index.html
+[4]: https://help.ubuntu.com/lts/installation-guide/amd64/apb.html

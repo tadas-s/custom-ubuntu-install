@@ -24,6 +24,7 @@ is_runnable "7z -?" "Cannot find/run 7z"
 
 # Remove previously built ISOs
 rm -f *.iso
+rm -f *.dmg
 
 mkdir "./tmp/"
 mkdir "./tmp/${VM}"
@@ -40,7 +41,7 @@ cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-mkisofs -o ./${VM}-ks.iso \
+mkisofs -o ./${VM}-unattended.iso \
         -b isolinux/isolinux.bin \
         -c isolinux/boot.cat \
         -no-emul-boot \
@@ -50,19 +51,26 @@ mkisofs -o ./${VM}-ks.iso \
         -V "${VM}" \
         ./tmp/${VM}/
 
+shout "Building bootable USB image"
+
+hdiutil convert \
+        -format UDRW \
+        -o ./${VM}-unattended ./${VM}-unattended.iso
+
+shout "Use Disk Utility to write ${VM}-unattended.dmg to USB drive"
+
 shout "Cleanup"
 
 rm -rf ./tmp/
 
 shout "Booting VM to start install"
 
-ISO="./${VM}-ks.iso"
 VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
 VBoxManage createvm --name "${VM}" --register
 VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on \
            --clipboard bidirectional --cpus 2 --firmware efi64
 VBoxManage storagectl "${VM}" --name ide0 --add ide
-VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium "${ISO}"
+VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium ./${VM}-unattended.iso
 VBoxManage storagectl "${VM}" --name sata0 --add sata --portcount 1
 VBoxManage createhd --filename "${VM_HDD_FILE}" --size 40960
 VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
