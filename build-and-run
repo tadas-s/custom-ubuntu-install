@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 source functions.sh
 
 # Read configuration variable file if it is present
@@ -15,55 +17,76 @@ VM_HDD_FILE="${VM_HDD}.vdi"
 
 shout "Setting up"
 
+rm -f ./*.img
+rm -f ./*.iso
+
 # Some dependency checks
 directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
-is_runnable "vboxmanage --version" "Cannot find/run vboxmanage"
-is_runnable "mkisofs --help" "Cannot find/run mkisofs"
-is_runnable "7z -?" "Cannot find/run 7z"
+is_runnable "vboxmanage" "Cannot find/run vboxmanage"
+is_runnable "mkisofs" "Cannot find/run mkisofs"
+is_runnable "7z" "Cannot find/run 7z"
+is_runnable "sha1sum" "Cannot find/run sha1sum"
+is_runnable "grub-mkimage" "Cannot find/run grub-mkimage"
 
-# Remove previously built ISOs
-rm -f *.iso
+mkdir -p "./tmp/"
 
-mkdir "./tmp/"
-mkdir "./tmp/${VM}"
+LODEVICE=`losetup -f`
 
-shout "Extracting ${ISO}"
+shout "Using loopback device ${LODEVICE}"
 
-7z x -o"./tmp/${VM}" "${ISO}"
+# 4GB image
+dd if=/dev/zero of=./${VM}-unattended.img bs=1G count=4
+sudo losetup ${LODEVICE} ./${VM}-unattended.img
+sudo mkfs.vfat -S 4096 ${LODEVICE}
+sudo mount -ouser,umask=0000 ${LODEVICE} ./tmp
+sudo chmod 0777 ./tmp
+
+shout "Copying ${ISO}"
+
+cp ${ISO} ./tmp/install.iso
 
 shout "Copying configuration"
 
-cp -f ./isolinux.cfg ./tmp/${VM}/isolinux/isolinux.cfg
-cp -f ./custom.seed ./tmp/${VM}/preseed/custom.seed
-cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
+cp ./custom.seed ./tmp
 
-shout "Building custom iso"
+mkdir -p ./tmp/efi/boot
+cp ./grub.cfg ./tmp/efi/boot
+pushd ./tmp/efi/boot
 
-mkisofs -o ./${VM}-unattended.iso \
-        -b isolinux/isolinux.bin \
-        -c isolinux/boot.cat \
-        -no-emul-boot \
-        -boot-load-size 4 \
-        -boot-info-table \
-        -J -r -R -l -input-charset default -allow-lowercase -allow-multidot  \
-        -V "${VM}" \
-        ./tmp/${VM}/
+grub-mkimage -o bootx64.efi -p /efi/boot -O x86_64-efi \
+ fat iso9660 part_gpt part_msdos \
+ normal boot linux configfile loopback chain \
+ efifwsetup efi_gop efi_uga \
+ ls search search_label search_fs_uuid search_fs_file \
+ gfxterm gfxterm_background gfxterm_menu test all_video loadenv \
+ exfat ext2 ntfs btrfs hfsplus udf
+
+popd
 
 shout "Cleanup"
 
-rm -rf ./tmp/
+sudo umount ./tmp
+sudo losetup -d ${LODEVICE}
+
+shout "Done?"
 
 shout "Booting VM to start install"
 
-VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
 VBoxManage createvm --name "${VM}" --register
 VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on \
-           --clipboard bidirectional --cpus 2 --firmware efi64
-VBoxManage storagectl "${VM}" --name ide0 --add ide
-VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium ./${VM}-unattended.iso
+           --clipboard bidirectional --cpus 2 --firmware efi64 --usbehci on
+
+# Primary disk
 VBoxManage storagectl "${VM}" --name sata0 --add sata --portcount 1
 VBoxManage createhd --filename "${VM_HDD_FILE}" --size 40960
 VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
+
+# Rest of config
 VBoxManage modifyvm "${VM}" --nic1 nat
+
+VBoxManage storagectl "${VM}" --name ide0 --add ide
+mv ./${VM}-unattended.img ./${VM}-unattended.iso
+VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium ./${VM}-unattended.iso
+
 VBoxManage startvm --type=gui "${VM}"

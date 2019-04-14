@@ -1,11 +1,32 @@
 # Check if folder $1 exists and echo $2 if not
-directory_exists() { [[ ! -d "$1" ]] && { echo "$2"; exit 1; } }
+directory_exists() {
+    if [[ ! -d "$1" ]]; then
+        echo "$2"
+        return 1
+    else
+        return 0
+    fi
+}
 
 # Check if file $1 exists and echo $2 if not
-file_exists() { [[ ! -e "$1" ]] && { echo "$2"; exit 1; } }
+file_exists() {
+    if [[ ! -e "$1" ]]; then
+        echo "$2"
+        return 1
+    else
+        return 0
+    fi
+}
 
 # Check if $1 runs and returns with 0 status
-is_runnable() { $1 >/dev/null 2>&1 || { echo "$2"; exit 1; } }
+is_runnable() {
+    if which $1; then
+        return 0
+    else
+        echo "$2"
+        return 1
+    fi
+}
 
 # Render template $1
 render_template() {
@@ -14,8 +35,7 @@ render_template() {
 
 shout() {
     echo
-    echo "========================================================================"
-    echo $1
+    echo  $(date) :: $1
     echo "========================================================================"
     echo
 }
