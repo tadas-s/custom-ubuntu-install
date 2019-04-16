@@ -28,31 +28,43 @@ is_runnable "sha1sum" "Canno find/run sha1sum"
 # Remove previously built ISOs
 rm -f *.iso
 
-mkdir -p "./tmp/"
-mkdir -p "./tmp/${VM}"
+mkdir -p ./tmp
 
 shout "Extracting ${ISO}"
 
-7z x -o"./tmp/${VM}" "${ISO}"
+udevil mount ${ISO}
+cp -rT /media/$(whoami)/$(basename ${ISO}) ./tmp
+udevil umount ${ISO}
 
 shout "Copying configuration"
 
-cp -f ./isolinux.cfg ./tmp/${VM}/isolinux/isolinux.cfg
-cp -f ./custom.seed ./tmp/${VM}/preseed/custom.seed
-cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
+chmod 0755 ./tmp/isolinux/isolinux.cfg
+cp -f ./isolinux.cfg ./tmp/isolinux/isolinux.cfg
+chmod 0755 ./tmp/preseed
+cp -f ./custom.seed ./tmp/preseed/custom.seed
+chmod 0755 ./tmp/boot/grub/grub.cfg
+cp -f ./grub.cfg ./tmp/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-genisoimage -r -J -b isolinux/isolinux.bin -c isolinux/boot.cat \
-            -no-emul-boot -boot-load-size 4 -boot-info-table \
-            -o ./${VM}-unattended.iso ./tmp/${VM}
-
-# Should help with USB "bootability"
-isohybrid ./${VM}-unattended.iso
+xorriso -joliet on \
+        -as mkisofs \
+        -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
+        -c isolinux/boot.cat \
+        -b isolinux/isolinux.bin \
+        -no-emul-boot \
+        -boot-load-size 4 \
+        -boot-info-table \
+        -eltorito-alt-boot \
+        -e boot/grub/efi.img \
+        -no-emul-boot \
+        -isohybrid-gpt-basdat \
+        -o ./${VM}-unattended.iso \
+        ./tmp
 
 shout "Cleanup"
 
-rm -rf ./tmp/
+sudo rm -rf ./tmp
 
 shout "Booting VM to start install"
 
