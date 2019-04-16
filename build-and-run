@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 source functions.sh
 
 # Read configuration variable file if it is present
@@ -18,15 +20,16 @@ shout "Setting up"
 # Some dependency checks
 directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
-is_runnable "vboxmanage --version" "Cannot find/run vboxmanage"
-is_runnable "mkisofs --help" "Cannot find/run mkisofs"
-is_runnable "7z -?" "Cannot find/run 7z"
+is_runnable "vboxmanage" "Cannot find/run vboxmanage"
+is_runnable "mkisofs" "Cannot find/run mkisofs"
+is_runnable "7z" "Cannot find/run 7z"
+is_runnable "sha1sum" "Canno find/run sha1sum"
 
 # Remove previously built ISOs
 rm -f *.iso
 
-mkdir "./tmp/"
-mkdir "./tmp/${VM}"
+mkdir -p "./tmp/"
+mkdir -p "./tmp/${VM}"
 
 shout "Extracting ${ISO}"
 
@@ -40,15 +43,12 @@ cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-mkisofs -o ./${VM}-unattended.iso \
-        -b isolinux/isolinux.bin \
-        -c isolinux/boot.cat \
-        -no-emul-boot \
-        -boot-load-size 4 \
-        -boot-info-table \
-        -J -r -R -l -input-charset default -allow-lowercase -allow-multidot  \
-        -V "${VM}" \
-        ./tmp/${VM}/
+genisoimage -r -J -b isolinux/isolinux.bin -c isolinux/boot.cat \
+            -no-emul-boot -boot-load-size 4 -boot-info-table \
+            -o ./${VM}-unattended.iso ./tmp/${VM}
+
+# Should help with USB "bootability"
+isohybrid ./${VM}-unattended.iso
 
 shout "Cleanup"
 
