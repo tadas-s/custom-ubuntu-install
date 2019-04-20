@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 source functions.sh
 
 # Read configuration variable file if it is present
@@ -18,41 +20,51 @@ shout "Setting up"
 # Some dependency checks
 directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
-is_runnable "vboxmanage --version" "Cannot find/run vboxmanage"
-is_runnable "mkisofs --help" "Cannot find/run mkisofs"
-is_runnable "7z -?" "Cannot find/run 7z"
+is_runnable "vboxmanage" "Cannot find/run vboxmanage"
+is_runnable "mkisofs" "Cannot find/run mkisofs"
+is_runnable "7z" "Cannot find/run 7z"
+is_runnable "sha1sum" "Canno find/run sha1sum"
 
 # Remove previously built ISOs
 rm -f *.iso
 
-mkdir "./tmp/"
-mkdir "./tmp/${VM}"
+mkdir -p ./tmp
 
 shout "Extracting ${ISO}"
 
-7z x -o"./tmp/${VM}" "${ISO}"
+udevil mount ${ISO}
+cp -rT /media/$(whoami)/$(basename ${ISO}) ./tmp
+udevil umount ${ISO}
 
 shout "Copying configuration"
 
-cp -f ./isolinux.cfg ./tmp/${VM}/isolinux/isolinux.cfg
-cp -f ./custom.seed ./tmp/${VM}/preseed/custom.seed
-cp -f ./grub.cfg ./tmp/${VM}/boot/grub/grub.cfg
+chmod 0755 ./tmp/isolinux/isolinux.cfg
+cp -f ./isolinux.cfg ./tmp/isolinux/isolinux.cfg
+chmod 0755 ./tmp/preseed
+cp -f ./custom.seed ./tmp/preseed/custom.seed
+chmod 0755 ./tmp/boot/grub/grub.cfg
+cp -f ./grub.cfg ./tmp/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-mkisofs -o ./${VM}-unattended.iso \
-        -b isolinux/isolinux.bin \
+xorriso -joliet on \
+        -as mkisofs \
+        -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
         -c isolinux/boot.cat \
+        -b isolinux/isolinux.bin \
         -no-emul-boot \
         -boot-load-size 4 \
         -boot-info-table \
-        -J -r -R -l -input-charset default -allow-lowercase -allow-multidot  \
-        -V "${VM}" \
-        ./tmp/${VM}/
+        -eltorito-alt-boot \
+        -e boot/grub/efi.img \
+        -no-emul-boot \
+        -isohybrid-gpt-basdat \
+        -o ./${VM}-unattended.iso \
+        ./tmp
 
 shout "Cleanup"
 
-rm -rf ./tmp/
+sudo rm -rf ./tmp
 
 shout "Booting VM to start install"
 
@@ -60,10 +72,16 @@ VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
 VBoxManage createvm --name "${VM}" --register
 VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on \
            --clipboard bidirectional --cpus 2 --firmware efi64
+
+# ISO image to boot
 VBoxManage storagectl "${VM}" --name ide0 --add ide
 VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium ./${VM}-unattended.iso
-VBoxManage storagectl "${VM}" --name sata0 --add sata --portcount 1
+
+# Storage to be used as primary disk
+VBoxManage storagectl "${VM}" --name nvme0 --add pcie --controller NVMe --portcount 1
 VBoxManage createhd --filename "${VM_HDD_FILE}" --size 40960
-VBoxManage storageattach "${VM}" --storagectl sata0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
+VBoxManage storageattach "${VM}" --storagectl nvme0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
+
+# Other stuff
 VBoxManage modifyvm "${VM}" --nic1 nat
 VBoxManage startvm --type=gui "${VM}"
