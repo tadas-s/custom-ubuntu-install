@@ -85,3 +85,13 @@ VBoxManage storageattach "${VM}" --storagectl nvme0 --port 0 --type hdd --medium
 # Other stuff
 VBoxManage modifyvm "${VM}" --nic1 nat
 VBoxManage startvm --type=gui "${VM}"
+
+# Wait until we're done with it
+wait_vm_quit ${VM}
+
+echo -n "Remove the ${VM} VM?"
+read answer
+
+if [ "$answer" != "${answer#[Yy]}" ] ;then
+    VBoxManage unregistervm "$VM" --delete
+fi
