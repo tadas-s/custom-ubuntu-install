@@ -1,3 +1,6 @@
 /.vagrant
 *.iso
 sharedvm/*
+/initramfs.fakeroot
+/initramfs/*
+/tmp/*

@@ -8,7 +8,7 @@ source functions.sh
 [ -r "./settings.conf" ] && . ./settings.conf
 
 UNIQ=`date | sha1sum | cut -c 1-7`
-ISO=`find ./iso/ubuntu-18.04* | head -n1`
+ISO=`find ./iso/netinstall* | head -n1`
 
 VMS_ROOT="${HOME}/VirtualBox VMs"
 VM="Ubuntu-`echo ${ISO} | cut -d "-" -f 2-3`-${UNIQ}"
@@ -27,31 +27,41 @@ is_runnable "sha1sum" "Canno find/run sha1sum"
 
 # Remove previously built ISOs
 rm -f *.iso
+# Cleanup if previous job failed / quit early
+rm -rf ./tmp
+rm -rf ./initramfs
+rm -f ./initramfs.fakeroot
 
 mkdir -p ./tmp
+mkdir -p ./initramfs
 
 shout "Extracting ${ISO}"
 
-udevil mount ${ISO}
-cp -rT /media/$(whoami)/$(basename ${ISO}) ./tmp
-udevil umount ${ISO}
+7z x -o"./tmp/" ${ISO}
+
+pushd ./initramfs
+
+zcat ../tmp/initrd.gz | fakeroot -s ../initramfs.fakeroot cpio -i
+
+mkdir -p seed
+
+cp ../custom.cfg ./seed/
+
+find | fakeroot -i ../initramfs.fakeroot cpio -o -H newc | gzip -c > ../tmp/initrd.gz
+
+popd
 
 shout "Copying configuration"
 
-chmod 0755 ./tmp/isolinux/isolinux.cfg
-cp -f ./isolinux.cfg ./tmp/isolinux/isolinux.cfg
-chmod 0755 ./tmp/preseed
-cp -f ./custom.seed ./tmp/preseed/custom.seed
+cp -f ./isolinux.cfg ./tmp/isolinux.cfg
 chmod 0755 ./tmp/boot/grub/grub.cfg
 cp -f ./grub.cfg ./tmp/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-xorriso -joliet on \
-        -as mkisofs \
+xorriso -as mkisofs \
         -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
-        -c isolinux/boot.cat \
-        -b isolinux/isolinux.bin \
+        -b isolinux.bin \
         -no-emul-boot \
         -boot-load-size 4 \
         -boot-info-table \
@@ -63,8 +73,6 @@ xorriso -joliet on \
         ./tmp
 
 shout "Cleanup"
-
-sudo rm -rf ./tmp
 
 shout "Booting VM to start install"
 

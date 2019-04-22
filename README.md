@@ -14,7 +14,7 @@ Download the [Ubuntu 18.04.02 Desktop edition][1] into `iso` folder (full ~2GB i
 
 ## Ubuntu LTS installer documentation
 
-Installation options in `custom.seed` and other installation guidance documented here:
+Installation options in `custom.cfg` and other installation guidance documented here:
 
 1. [Automatic installation chapter][2]
 2. [Full guide][3]
