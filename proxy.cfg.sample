@@ -1,0 +1,2 @@
+# Copy this file to proxy.cfg and uncomment + modify lines below to enable proxy use when installing:
+# d-i mirror/http/proxy string 192.168.0.1:3128

@@ -47,6 +47,18 @@ mkdir -p seed
 
 cp ../custom.cfg ./seed/
 
+if [[ -f ../wifi.cfg ]]; then
+    cp ../wifi.cfg ./seed/wifi.cfg
+else
+    cp ../wifi.cfg.sample ./seed/wifi.cfg
+fi
+
+if [[ -f ../proxy.cfg ]]; then
+    cp ../proxy.cfg ./seed/proxy.cfg
+else
+    cp ../proxy.cfg.sample ./seed/proxy.cfg
+fi
+
 find | fakeroot -i ../initramfs.fakeroot cpio -o -H newc | gzip -c > ../tmp/initrd.gz
 
 popd

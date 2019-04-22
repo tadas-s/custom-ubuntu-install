@@ -4,3 +4,5 @@ sharedvm/*
 /initramfs.fakeroot
 /initramfs/*
 /tmp/*
+/proxy.cfg
+/wifi.cfg

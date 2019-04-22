@@ -1,0 +1,4 @@
+# Copy this file to wifi.cfg and uncomment + modify lines below to enable wifi use when installing:
+# d-i netcfg/wireless_essid [string] // Name of wireless network
+# d-i netcfg/wireless_security_type [select] // Options are wep/open or wpa
+# d-i netcfg/wireless_wpa [string] // Password
