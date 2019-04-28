@@ -1,2 +1,8 @@
 /.vagrant
 *.iso
+*.deb
+sharedvm/*
+/initramfs.fakeroot
+/initramfs/*
+/tmp/*
+/proxy.cfg

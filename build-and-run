@@ -5,10 +5,26 @@ set -e
 source functions.sh
 
 # Read configuration variable file if it is present
-[ -r "./settings.conf" ] && . ./settings.conf
+[[ -r "./settings.conf" ]] && . ./settings.conf
+
+if [[ ! -f ./iso/netinstall-18.04.2-desktop-amd64.iso ]]; then
+    shout "Downloading netinstall iso"
+    pushd ./iso/
+    wget -O netinstall-18.04.2-desktop-amd64.iso \
+        http://mirrors.edge.kernel.org/ubuntu/dists/bionic/main/installer-amd64/current/images/netboot/mini.iso
+    popd
+fi
+
+# NOTE: linux-modules-extra version must match kernel version in the netinstall iso
+if [[ ! -f ./iso/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb ]]; then
+    shout "Downloading linux-modules-extra"
+    pushd ./iso/
+    wget http://mirrors.kernel.org/ubuntu/pool/main/l/linux/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb
+    popd
+fi
 
 UNIQ=`date | sha1sum | cut -c 1-7`
-ISO=`find ./iso/ubuntu-18.04* | head -n1`
+ISO=`find ./iso/netinstall* | head -n1`
 
 VMS_ROOT="${HOME}/VirtualBox VMs"
 VM="Ubuntu-`echo ${ISO} | cut -d "-" -f 2-3`-${UNIQ}"
@@ -21,37 +37,56 @@ shout "Setting up"
 directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
 is_runnable "vboxmanage" "Cannot find/run vboxmanage"
-is_runnable "mkisofs" "Cannot find/run mkisofs"
+is_runnable "xorriso" "Cannot find/run xorriso"
 is_runnable "7z" "Cannot find/run 7z"
-is_runnable "sha1sum" "Canno find/run sha1sum"
+is_runnable "sha1sum" "Cannot find/run sha1sum"
 
 # Remove previously built ISOs
 rm -f *.iso
+# Cleanup if previous job failed / quit early
+rm -rf ./tmp
+rm -rf ./initramfs
+rm -f ./initramfs.fakeroot
 
 mkdir -p ./tmp
+mkdir -p ./initramfs
 
 shout "Extracting ${ISO}"
 
-udevil mount ${ISO}
-cp -rT /media/$(whoami)/$(basename ${ISO}) ./tmp
-udevil umount ${ISO}
+7z x -o"./tmp/" ${ISO}
+
+pushd ./initramfs
+
+zcat ../tmp/initrd.gz | fakeroot -s ../initramfs.fakeroot cpio -i
+
+mkdir -p seed
+
+cp ../custom.cfg ./seed/
+
+if [[ -f ../proxy.cfg ]]; then
+    cp ../proxy.cfg ./seed/proxy.cfg
+else
+    cp ../proxy.cfg.sample ./seed/proxy.cfg
+fi
+
+# Include extra modules non-free modules for network.
+ar p ../iso/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb data.tar.xz | tar xJ
+
+find | fakeroot -i ../initramfs.fakeroot cpio -o -H newc | gzip -c > ../tmp/initrd.gz
+
+popd
 
 shout "Copying configuration"
 
-chmod 0755 ./tmp/isolinux/isolinux.cfg
-cp -f ./isolinux.cfg ./tmp/isolinux/isolinux.cfg
-chmod 0755 ./tmp/preseed
-cp -f ./custom.seed ./tmp/preseed/custom.seed
+cp -f ./isolinux.cfg ./tmp/isolinux.cfg
 chmod 0755 ./tmp/boot/grub/grub.cfg
 cp -f ./grub.cfg ./tmp/boot/grub/grub.cfg
 
 shout "Building custom iso"
 
-xorriso -joliet on \
-        -as mkisofs \
+xorriso -as mkisofs \
         -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
-        -c isolinux/boot.cat \
-        -b isolinux/isolinux.bin \
+        -b isolinux.bin \
         -no-emul-boot \
         -boot-load-size 4 \
         -boot-info-table \
@@ -63,8 +98,6 @@ xorriso -joliet on \
         ./tmp
 
 shout "Cleanup"
-
-sudo rm -rf ./tmp
 
 shout "Booting VM to start install"
 
@@ -85,3 +118,13 @@ VBoxManage storageattach "${VM}" --storagectl nvme0 --port 0 --type hdd --medium
 # Other stuff
 VBoxManage modifyvm "${VM}" --nic1 nat
 VBoxManage startvm --type=gui "${VM}"
+
+# Wait until we're done with it
+wait_vm_quit ${VM}
+
+echo -n "Remove the ${VM} VM?"
+read answer
+
+if [[ "$answer" != "${answer#[Yy]}" ]]; then
+    VBoxManage unregistervm "$VM" --delete
+fi

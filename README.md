@@ -1,36 +1,31 @@
 # Unattended and customized Ubuntu 18.04 installs
 
+## Requirements
+
+Linux system with Virtualbox for install testing.
+
 ## Getting started
 
-Mac OS requirements to build the installer .iso image:
+Run `build-and-run` which will download some extra dependencies, build image and start
+a Virtualbox machine to test the install process.
 
-```bash
-brew install cdrtools
-brew cask install virtualbox
-brew install p7zip
+## Putting the image into usb stick
+
+Assuming usb stick is `/dev/sdc` and the pre-built image name is install.iso:
+
 ```
-
-Download the [Ubuntu 18.04.02 Desktop edition][1] into `iso` folder (full ~2GB image option).  
+sudo dd bs=1M if=install.iso of=/dev/sdc
+```
 
 ## Ubuntu LTS installer documentation
 
-Installation options in `custom.seed` and other installation guidance documented here:
+Note that Ubuntu has two install methods:
 
-1. [Automatic installation chapter][2]
-2. [Full guide][3]
-3. [Pre-seeding configuration guide][4]
+1. Ubiquity installer (which is a fairly limited install from a pre-built complete system 
+   image).
+2. Network install using [Debian Installer][1].
 
-## Building the iso image
+This customized installer is the "Debian installer" flavour. Best place for documentation
+is Debian docs.
 
-Run the following:
-
-```bash
-./build-and-run
-``` 
-
-This will build image and start a Virtualbox VM with the image mounted for testing.
-
-[1]: http://releases.ubuntu.com/18.04.2/
-[2]: https://help.ubuntu.com/lts/installation-guide/amd64/ch04s06.html
-[3]: https://help.ubuntu.com/lts/installation-guide/amd64/index.html
-[4]: https://help.ubuntu.com/lts/installation-guide/amd64/apb.html
+[1]: https://wiki.debian.org/DebianInstaller/
