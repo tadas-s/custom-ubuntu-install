@@ -5,7 +5,23 @@ set -e
 source functions.sh
 
 # Read configuration variable file if it is present
-[ -r "./settings.conf" ] && . ./settings.conf
+[[ -r "./settings.conf" ]] && . ./settings.conf
+
+if [[ ! -f ./iso/netinstall-18.04.2-desktop-amd64.iso ]]; then
+    shout "Downloading netinstall iso"
+    pushd ./iso/
+    wget -O netinstall-18.04.2-desktop-amd64.iso \
+        http://mirrors.edge.kernel.org/ubuntu/dists/bionic/main/installer-amd64/current/images/netboot/mini.iso
+    popd
+fi
+
+# NOTE: linux-modules-extra version must match kernel version in the netinstall iso
+if [[ ! -f ./iso/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb ]]; then
+    shout "Downloading linux-modules-extra"
+    pushd ./iso/
+    wget http://mirrors.kernel.org/ubuntu/pool/main/l/linux/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb
+    popd
+fi
 
 UNIQ=`date | sha1sum | cut -c 1-7`
 ISO=`find ./iso/netinstall* | head -n1`
@@ -21,9 +37,9 @@ shout "Setting up"
 directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
 is_runnable "vboxmanage" "Cannot find/run vboxmanage"
-is_runnable "mkisofs" "Cannot find/run mkisofs"
+is_runnable "xorriso" "Cannot find/run xorriso"
 is_runnable "7z" "Cannot find/run 7z"
-is_runnable "sha1sum" "Canno find/run sha1sum"
+is_runnable "sha1sum" "Cannot find/run sha1sum"
 
 # Remove previously built ISOs
 rm -f *.iso
@@ -115,6 +131,6 @@ wait_vm_quit ${VM}
 echo -n "Remove the ${VM} VM?"
 read answer
 
-if [ "$answer" != "${answer#[Yy]}" ] ;then
+if [[ "$answer" != "${answer#[Yy]}" ]]; then
     VBoxManage unregistervm "$VM" --delete
 fi
