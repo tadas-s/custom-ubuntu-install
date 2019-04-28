@@ -6,4 +6,3 @@ sharedvm/*
 /initramfs/*
 /tmp/*
 /proxy.cfg
-/wifi.cfg
