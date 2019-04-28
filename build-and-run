@@ -59,6 +59,9 @@ else
     cp ../proxy.cfg.sample ./seed/proxy.cfg
 fi
 
+# Include extra modules non-free modules for network.
+ar p ../iso/linux-modules-extra-4.15.0-20-generic_4.15.0-20.21_amd64.deb data.tar.xz | tar xJ
+
 find | fakeroot -i ../initramfs.fakeroot cpio -o -H newc | gzip -c > ../tmp/initrd.gz
 
 popd
