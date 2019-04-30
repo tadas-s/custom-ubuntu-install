@@ -26,17 +26,12 @@ fi
 UNIQ=`date | sha1sum | cut -c 1-7`
 ISO=`find ./iso/netinstall* | head -n1`
 
-VMS_ROOT="${HOME}/VirtualBox VMs"
 VM="Ubuntu-`echo ${ISO} | cut -d "-" -f 2-3`-${UNIQ}"
-VM_HDD="${VMS_ROOT}/${VM}/${VM}"
-VM_HDD_FILE="${VM_HDD}.vdi"
 
 shout "Setting up"
 
 # Some dependency checks
-directory_exists "${VMS_ROOT}" "Cannot find VirtualBox VM directory ${VMS_ROOT}"
 file_exists "${ISO}" "Cannot find iso ${ISO}"
-is_runnable "vboxmanage" "Cannot find/run vboxmanage"
 is_runnable "xorriso" "Cannot find/run xorriso"
 is_runnable "7z" "Cannot find/run 7z"
 is_runnable "sha1sum" "Cannot find/run sha1sum"
@@ -98,33 +93,3 @@ xorriso -as mkisofs \
         ./tmp
 
 shout "Cleanup"
-
-shout "Booting VM to start install"
-
-VBoxManage -v &> /dev/null || { echo "ERROR: VBoxManage not in path!"; exit 1; }
-VBoxManage createvm --name "${VM}" --register
-VBoxManage modifyvm "${VM}" --ostype Ubuntu_64 --memory 8192 --vram 64 --rtcuseutc on --ioapic on \
-           --clipboard bidirectional --cpus 2 --firmware efi64
-
-# ISO image to boot
-VBoxManage storagectl "${VM}" --name ide0 --add ide
-VBoxManage storageattach "${VM}" --storagectl ide0 --device 0 --port 0 --type dvddrive --medium ./${VM}-unattended.iso
-
-# Storage to be used as primary disk
-VBoxManage storagectl "${VM}" --name nvme0 --add pcie --controller NVMe --portcount 1
-VBoxManage createhd --filename "${VM_HDD_FILE}" --size 40960
-VBoxManage storageattach "${VM}" --storagectl nvme0 --port 0 --type hdd --medium "${VM_HDD_FILE}"
-
-# Other stuff
-VBoxManage modifyvm "${VM}" --nic1 nat
-VBoxManage startvm --type=gui "${VM}"
-
-# Wait until we're done with it
-wait_vm_quit ${VM}
-
-echo -n "Remove the ${VM} VM?"
-read answer
-
-if [[ "$answer" != "${answer#[Yy]}" ]]; then
-    VBoxManage unregistervm "$VM" --delete
-fi
