@@ -1,6 +1,7 @@
 /.vagrant
 *.iso
 *.deb
+*.log
 sharedvm/*
 /initramfs.fakeroot
 /initramfs/*
